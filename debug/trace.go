@@ -24,7 +24,7 @@ func PushTrace(
 	ctx context.Context,
 	name string,
 ) context.Context {
-	writers := kictx.Debug(ctx)
+	writers := debugWriters(ctx)
 	if len(writers) == 0 {
 		return ctx
 	}
@@ -62,7 +62,7 @@ func printTraceStart(writers []io.Writer, stack []trace) {
 func PopTrace(
 	ctx context.Context,
 ) context.Context {
-	writers := kictx.Debug(ctx)
+	writers := debugWriters(ctx)
 	if len(writers) == 0 {
 		return ctx
 	}

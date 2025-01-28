@@ -14,11 +14,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jaypipes/kube-inspect/debug"
-	"github.com/jaypipes/kube-inspect/kube"
 	"helm.sh/helm/v3/pkg/action"
 	helmchart "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+
+	"github.com/jaypipes/kube-inspect/debug"
+	"github.com/jaypipes/kube-inspect/kube"
 )
 
 // Inspect returns a `Chart` that describes a Helm Chart that has been rendered
@@ -52,10 +53,15 @@ func Inspect(ctx context.Context, subject any) (*Chart, error) {
 
 		}
 	case *helmchart.Chart:
-		if hc == nil {
+		if subject == nil {
 			return nil, fmt.Errorf("passed nil helm sdk-go *Chart struct")
 		}
 		hc = subject
+	case io.Reader:
+		hc, err = loader.LoadArchive(subject)
+		if err != nil {
+			return nil, fmt.Errorf("error loading archive: %w", err)
+		}
 	default:
 		return nil, fmt.Errorf(
 			"unhandled type for inspect subject: %s (%T)",

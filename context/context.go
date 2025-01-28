@@ -85,22 +85,6 @@ func WithDebug(writers ...io.Writer) ContextModifier {
 	}
 }
 
-// SetDebug sets kube-inspect's debug logging to the supplied `io.Writer`.
-//
-// The `writers` parameters is optional. If no `io.Writer` objects are
-// supplied, kube-inspect will output debug messages to stdout.
-func SetDebug(
-	ctx context.Context,
-	writers ...io.Writer,
-) context.Context {
-	if len(writers) == 0 {
-		// This triggers writes to stdout when WithDebug() is called with no
-		// parameters...
-		writers = []io.Writer{os.Stdout}
-	}
-	return context.WithValue(ctx, DebugKey, writers)
-}
-
 // New returns a new Context
 func New(mods ...ContextModifier) context.Context {
 	ctx := context.TODO()

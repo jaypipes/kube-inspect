@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
-	kictx "github.com/jaypipes/kube-inspect/context"
 )
 
 const (
@@ -24,7 +22,7 @@ func Printf(
 	format string,
 	args ...interface{},
 ) {
-	writers := kictx.Debug(ctx)
+	writers := debugWriters(ctx)
 	if len(writers) == 0 {
 		return
 	}
@@ -43,7 +41,7 @@ func Println(
 	format string,
 	args ...interface{},
 ) {
-	writers := kictx.Debug(ctx)
+	writers := debugWriters(ctx)
 	if len(writers) == 0 {
 		return
 	}
