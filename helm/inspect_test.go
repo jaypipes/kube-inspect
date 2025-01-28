@@ -1,12 +1,16 @@
+// Use and distribution licensed under the Apache license version 2.
+//
+// See the COPYING file in the root project directory for full text.
+
 package helm_test
 
 import (
 	"testing"
 
+	kictx "github.com/jaypipes/kube-inspect/context"
+	kihelm "github.com/jaypipes/kube-inspect/helm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	helminspect "github.com/jaypipes/kube-inspect/helm"
 )
 
 const (
@@ -16,7 +20,8 @@ const (
 func TestInspectURL(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	c, err := helminspect.Inspect(nginxChartURL)
+	ctx := kictx.New(kictx.WithDebug())
+	c, err := kihelm.Inspect(ctx, nginxChartURL)
 	require.Nil(err)
 
 	require.NotNil(c.Metadata)

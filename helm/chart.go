@@ -1,3 +1,7 @@
+// Use and distribution licensed under the Apache license version 2.
+//
+// See the COPYING file in the root project directory for full text.
+
 package helm
 
 import (
@@ -10,10 +14,10 @@ import (
 // and therefore exposes all of that struct's methods and metadata getters.
 type Chart struct {
 	*helmchart.Chart
-	// resources is a map, keyed by the source filename within the Helm Chart,
-	// of Kubernetes resources as represented as `unstructured.Unstructured`
-	// documents.
-	resources map[string]*unstructured.Unstructured
+	// resources is a slice of Kubernetes resources represented as
+	// `unstructured.Unstructured` documents that was found in the
+	// rendered/synthesized Helm Chart.
+	resources []*unstructured.Unstructured
 }
 
 // Resources returns a slice of Kubernetes resources installed by the Helm
