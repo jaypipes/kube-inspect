@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	nginxChartURL = "https://charts.bitnami.com/bitnami/nginx-8.8.4.tgz"
+	skipNetworkFetchEnvKey = "SKIP_NETWORK_FETCH"
+	nginxChartURL          = "https://charts.bitnami.com/bitnami/nginx-8.8.4.tgz"
 )
 
 var (
@@ -26,7 +27,14 @@ var (
 	nginxLocalChartDir  = filepath.Join("testdata", "nginx")
 )
 
+func skipNetworkFetch(t *testing.T) {
+	if _, ok := os.LookupEnv(skipNetworkFetchEnvKey); ok {
+		t.Skip("network fetching disabled.")
+	}
+}
+
 func TestInspectURL(t *testing.T) {
+	skipNetworkFetch(t)
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx := kictx.New(kictx.WithDebug())

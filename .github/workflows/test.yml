@@ -16,6 +16,8 @@ jobs:
         go: ['1.21', '1.22', '1.23']
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      SKIP_NETWORK_FETCH: 1
     steps:
      - name: harden runner
        uses: step-security/harden-runner@cb605e52c26070c328afc4562f0b4ada7618a84e # v2.10.4
