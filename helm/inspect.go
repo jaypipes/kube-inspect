@@ -5,7 +5,6 @@
 package helm
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -14,13 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"helm.sh/helm/v3/pkg/action"
 	helmchart "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/strvals"
 
 	"github.com/jaypipes/kube-inspect/debug"
-	"github.com/jaypipes/kube-inspect/kube"
 )
 
 // InspectOptions is a mechanism for you to control the inspection of a Helm
@@ -102,51 +99,10 @@ func Inspect(
 			subject, subject,
 		)
 	}
-	// Unfortunately, the helm sdk-go Release.Info.Resources map is empty when
-	// "installing" in dry-run mode (which is necessary to render the templates
-	// but not actually install anything). So we need to manually construct the
-	// set of Kubernetes resources by processing the rendered multi-document
-	// YAML manifest.
-	manifest, err := manifestFromChart(ctx, hc, opts)
-	if err != nil {
-		return nil, err
-	}
-	resources, err := kube.ResourcesFromManifest(ctx, manifest)
-	if err != nil {
-		return nil, err
-	}
 	return &Chart{
-		Chart:     hc,
-		resources: resources,
+		Chart:       hc,
+		inspectOpts: opts,
 	}, nil
-}
-
-// manifestFromChart accepts a helm sdk-go Chart object and returns a buffer
-// containing a YAML document containing zero or more Kubernetes resource
-// manifests that have been synthesized by running a dry-running install of the
-// Helm Chart.
-func manifestFromChart(
-	ctx context.Context,
-	hc *helmchart.Chart,
-	opts *InspectOptions,
-) (*bytes.Buffer, error) {
-	ctx = debug.PushTrace(ctx, "helm:manifest-from-chart")
-	defer debug.PopTrace(ctx)
-	installer := action.NewInstall(&action.Configuration{})
-	installer.ClientOnly = true
-	installer.DryRun = true
-	installer.ReleaseName = "kube-inspect"
-	installer.IncludeCRDs = true
-	installer.Namespace = "default"
-	installer.DisableHooks = true
-	if opts.values != nil {
-		debug.Printf(ctx, "using value overrides: %v\n", opts.values)
-	}
-	release, err := installer.Run(hc, opts.values)
-	if err != nil {
-		return nil, err
-	}
-	return bytes.NewBuffer([]byte(release.Manifest)), nil
 }
 
 // fetchArchive reads the tarball at the supplied URL, copies it to a temporary

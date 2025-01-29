@@ -43,7 +43,8 @@ func TestInspectURL(t *testing.T) {
 
 	require.NotNil(c.Metadata)
 	assert.Equal("nginx", c.Metadata.Name)
-	resources := c.Resources()
+	resources, err := c.Resources(ctx)
+	require.Nil(err)
 	resourceKinds := []string{}
 	for _, r := range resources {
 		resourceKinds = append(resourceKinds, r.GetKind())
@@ -61,12 +62,14 @@ func TestInspectHelmSDKChart(t *testing.T) {
 	require.Nil(err)
 	hc, err := loader.LoadArchive(tf)
 	require.Nil(err)
-	c, err := kihelm.Inspect(context.TODO(), hc)
+	ctx := context.TODO()
+	c, err := kihelm.Inspect(ctx, hc)
 	require.Nil(err)
 
 	require.NotNil(c.Metadata)
 	assert.Equal("nginx", c.Metadata.Name)
-	resources := c.Resources()
+	resources, err := c.Resources(ctx)
+	require.Nil(err)
 	resourceKinds := []string{}
 	for _, r := range resources {
 		resourceKinds = append(resourceKinds, r.GetKind())
@@ -80,12 +83,14 @@ func TestInspectHelmSDKChart(t *testing.T) {
 func TestInspectChartDir(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	c, err := kihelm.Inspect(context.TODO(), nginxLocalChartDir)
+	ctx := context.TODO()
+	c, err := kihelm.Inspect(ctx, nginxLocalChartDir)
 	require.Nil(err)
 
 	require.NotNil(c.Metadata)
 	assert.Equal("nginx", c.Metadata.Name)
-	resources := c.Resources()
+	resources, err := c.Resources(ctx)
+	require.Nil(err)
 	resourceKinds := []string{}
 	for _, r := range resources {
 		resourceKinds = append(resourceKinds, r.GetKind())
@@ -101,12 +106,14 @@ func TestInspectIOReader(t *testing.T) {
 	assert := assert.New(t)
 	tf, err := os.Open(nginxLocalChartPath)
 	require.Nil(err)
-	c, err := kihelm.Inspect(context.TODO(), tf)
+	ctx := context.TODO()
+	c, err := kihelm.Inspect(ctx, tf)
 	require.Nil(err)
 
 	require.NotNil(c.Metadata)
 	assert.Equal("nginx", c.Metadata.Name)
-	resources := c.Resources()
+	resources, err := c.Resources(ctx)
+	require.Nil(err)
 	resourceKinds := []string{}
 	for _, r := range resources {
 		resourceKinds = append(resourceKinds, r.GetKind())
@@ -121,15 +128,17 @@ func TestInspectWithValues(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	overrides := "pdb.create=true,serviceAccount.create=true"
+	ctx := context.TODO()
 	c, err := kihelm.Inspect(
-		context.TODO(), nginxLocalChartDir,
+		ctx, nginxLocalChartDir,
 		kihelm.WithValues(overrides),
 	)
 	require.Nil(err)
 
 	require.NotNil(c.Metadata)
 	assert.Equal("nginx", c.Metadata.Name)
-	resources := c.Resources()
+	resources, err := c.Resources(ctx)
+	require.Nil(err)
 	resourceKinds := []string{}
 	for _, r := range resources {
 		resourceKinds = append(resourceKinds, r.GetKind())
