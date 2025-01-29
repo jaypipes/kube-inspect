@@ -5,6 +5,8 @@ go 1.23.0
 toolchain go1.23.5
 
 require (
+	github.com/samber/lo v1.49.1
+	github.com/santhosh-tekuri/jsonschema v1.2.4
 	github.com/stretchr/testify v1.10.0
 	helm.sh/helm/v3 v3.17.0
 	k8s.io/apimachinery v0.32.1
