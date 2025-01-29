@@ -116,3 +116,28 @@ func TestInspectIOReader(t *testing.T) {
 	assert.Contains(resourceKinds, "Service")
 	assert.Contains(resourceKinds, "ConfigMap")
 }
+
+func TestInspectWithValues(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	overrides := "pdb.create=true,serviceAccount.create=true"
+	c, err := kihelm.Inspect(
+		context.TODO(), nginxLocalChartDir,
+		kihelm.WithValues(overrides),
+	)
+	require.Nil(err)
+
+	require.NotNil(c.Metadata)
+	assert.Equal("nginx", c.Metadata.Name)
+	resources := c.Resources()
+	resourceKinds := []string{}
+	for _, r := range resources {
+		resourceKinds = append(resourceKinds, r.GetKind())
+	}
+	assert.Len(resources, 5)
+	assert.Contains(resourceKinds, "ServiceAccount")
+	assert.Contains(resourceKinds, "PodDisruptionBudget")
+	assert.Contains(resourceKinds, "Deployment")
+	assert.Contains(resourceKinds, "Service")
+	assert.Contains(resourceKinds, "ConfigMap")
+}

@@ -17,10 +17,36 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	helmchart "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/strvals"
 
 	"github.com/jaypipes/kube-inspect/debug"
 	"github.com/jaypipes/kube-inspect/kube"
 )
+
+// InspectOptions is a mechanism for you to control the inspection of a Helm
+// Chart.
+type InspectOptions struct {
+	values map[string]any
+}
+
+type InspectOption func(opts *InspectOptions)
+
+// WithValues allows passing values.yaml overrides to the Inspect function.
+//
+// The `vals` parameter should be a string or a map of string to interface.
+//
+// You may choose to pass a "strvals" single string, e.g. "pdb.create=true",
+// instead of a nested map.
+func WithValues(vals any) InspectOption {
+	return func(opts *InspectOptions) {
+		switch vals := vals.(type) {
+		case string:
+			opts.values, _ = strvals.Parse(vals)
+		case map[string]any:
+			opts.values = vals
+		}
+	}
+}
 
 // Inspect returns a `Chart` that describes a Helm Chart that has been rendered
 // to actual Kubernetes resource manifests.
@@ -28,7 +54,15 @@ import (
 // The `subject` argument can be a filepath, a URL, a helm sdk-go `*Chart`
 // struct, or an `io.Reader` pointing at either a directory or a compressed tar
 // archive.
-func Inspect(ctx context.Context, subject any) (*Chart, error) {
+func Inspect(
+	ctx context.Context,
+	subject any,
+	opt ...InspectOption,
+) (*Chart, error) {
+	opts := &InspectOptions{}
+	for _, o := range opt {
+		o(opts)
+	}
 	ctx = debug.PushTrace(ctx, "helm:inspect")
 	defer debug.PopTrace(ctx)
 	var err error
@@ -73,7 +107,7 @@ func Inspect(ctx context.Context, subject any) (*Chart, error) {
 	// but not actually install anything). So we need to manually construct the
 	// set of Kubernetes resources by processing the rendered multi-document
 	// YAML manifest.
-	manifest, err := manifestFromChart(ctx, hc)
+	manifest, err := manifestFromChart(ctx, hc, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +128,7 @@ func Inspect(ctx context.Context, subject any) (*Chart, error) {
 func manifestFromChart(
 	ctx context.Context,
 	hc *helmchart.Chart,
+	opts *InspectOptions,
 ) (*bytes.Buffer, error) {
 	ctx = debug.PushTrace(ctx, "helm:manifest-from-chart")
 	defer debug.PopTrace(ctx)
@@ -104,7 +139,10 @@ func manifestFromChart(
 	installer.IncludeCRDs = true
 	installer.Namespace = "default"
 	installer.DisableHooks = true
-	release, err := installer.Run(hc, nil)
+	if opts.values != nil {
+		debug.Printf(ctx, "using value overrides: %v\n", opts.values)
+	}
+	release, err := installer.Run(hc, opts.values)
 	if err != nil {
 		return nil, err
 	}
