@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	kictx "github.com/jaypipes/kube-inspect/context"
@@ -23,8 +24,9 @@ const (
 )
 
 var (
-	nginxLocalChartPath = filepath.Join("testdata", "nginx-8.8.4.tgz")
-	nginxLocalChartDir  = filepath.Join("testdata", "nginx")
+	certManagerLocalChartPath = filepath.Join("testdata", "cert-manager-v1.17.1.tgz")
+	nginxLocalChartPath       = filepath.Join("testdata", "nginx-8.8.4.tgz")
+	nginxLocalChartDir        = filepath.Join("testdata", "nginx")
 )
 
 func skipNetworkFetch(t *testing.T) {
@@ -149,4 +151,35 @@ func TestInspectWithValues(t *testing.T) {
 	assert.Contains(resourceKinds, "Deployment")
 	assert.Contains(resourceKinds, "Service")
 	assert.Contains(resourceKinds, "ConfigMap")
+}
+
+// When a Helm Chart specifies a KubeVersion constraint that does not meet the
+// "DefaultCapabilities.KubeVersion" set in the Helm SDK Go's chartutil
+// package, we need to detect that and automatically adjust the
+// installer.KubeVersion used in rendering.
+//
+// See: https://github.com/jaypipes/kube-inspect/issues/2
+// See: https://github.com/helm/helm/blob/3a94215585b91d5ac41ebb258e376aa11980b564/pkg/chartutil/capabilities.go#L31-L50
+func TestInspectChartAutoAdjustedKubeVersion(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	debugCollector := &strings.Builder{}
+	tf, err := os.Open(certManagerLocalChartPath)
+	require.Nil(err)
+	hc, err := loader.LoadArchive(tf)
+	require.Nil(err)
+	ctx := kictx.New(kictx.WithDebug(debugCollector))
+	c, err := kihelm.Inspect(ctx, hc)
+	require.Nil(err)
+
+	require.NotNil(c.Metadata)
+	assert.Equal("cert-manager", c.Metadata.Name)
+	_, err = c.Resources(ctx)
+
+	require.Nil(err)
+	debugContent := debugCollector.String()
+	expected := `version check failed for default Helm SDK ` +
+		`kubeVersion "1.20.0". setting installer.KubeVersion ` +
+		`manually to "v1.22.0-0"`
+	assert.Contains(debugContent, expected)
 }
