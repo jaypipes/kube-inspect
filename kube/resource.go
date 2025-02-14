@@ -40,6 +40,9 @@ func ResourcesFromManifest(
 		if err := decoder.Decode(&rawObj); err != nil {
 			break
 		}
+		if len(rawObj.Raw) == 0 {
+			continue
+		}
 
 		obj, gvk, err := parser.Decode(rawObj.Raw, nil, nil)
 		if err != nil {
