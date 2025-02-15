@@ -8,11 +8,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
-	"github.com/jaypipes/kube-inspect/debug"
+	"github.com/Masterminds/semver/v3"
 	"helm.sh/helm/v3/pkg/action"
 	helmchart "helm.sh/helm/v3/pkg/chart"
+	helmchartutil "helm.sh/helm/v3/pkg/chartutil"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/jaypipes/kube-inspect/debug"
 )
 
 // Chart describes an inspected Helm Chart that has been rendered to actual
@@ -45,6 +49,7 @@ func (c *Chart) render(
 	}
 	ctx = debug.PushTrace(ctx, "helm:chart:render")
 	defer debug.PopTrace(ctx)
+
 	installer := action.NewInstall(&action.Configuration{})
 	installer.ClientOnly = true
 	installer.DryRun = true
@@ -52,6 +57,15 @@ func (c *Chart) render(
 	installer.IncludeCRDs = true
 	installer.Namespace = "default"
 	installer.DisableHooks = true
+
+	// The Helm Chart may specify a KubeVersion in its metadata that is
+	// incompatible with the Kubernetes client version used in compiling the
+	// Helm Go SDK. If this is the case, we need to pass an updated KubeVersion
+	// installer option when rendering.
+	if err := c.autoAdjustKubeVersion(ctx, installer); err != nil {
+		return err
+	}
+
 	opts := c.inspectOpts
 	if opts.values != nil {
 		debug.Printf(ctx, "using value overrides: %v\n", opts.values)
@@ -62,5 +76,69 @@ func (c *Chart) render(
 	}
 	c.manifest = bytes.NewBuffer([]byte(release.Manifest))
 	c.rendered = true
+	return nil
+}
+
+// autoAdjustKubeVersion detects if the KubeVersion used by the Helm SDK is
+// incompatible with the required KubeVersion specified in the Helm Chart
+// metadata KubeVersion. If incompatible, the function figures out an
+// appropriate KubeVersion and manually overrides the Install.KubeVersion
+// option to that workable KubeVersion.
+//
+// See: https://github.com/jaypipes/kube-inspect/issues/2
+// See: https://github.com/helm/helm/blob/3a94215585b91d5ac41ebb258e376aa11980b564/pkg/chartutil/capabilities.go#L31-L50
+func (c *Chart) autoAdjustKubeVersion(
+	ctx context.Context,
+	installer *action.Install,
+) error {
+	hc := c.Chart
+	if hc.Metadata.KubeVersion == "" {
+		return nil
+	}
+	vc, err := semver.NewConstraint(hc.Metadata.KubeVersion)
+	if err != nil {
+		return err
+	}
+	debug.Printf(ctx, "chart kubeVersion constraint: %s\n", vc.String())
+	dv, _ := semver.NewVersion(
+		helmchartutil.DefaultCapabilities.KubeVersion.String(),
+	)
+	if !vc.Check(dv) {
+		var uv *semver.Version
+		constraintStr := strings.TrimSpace(vc.String())
+		if strings.HasPrefix(constraintStr, "<=") || strings.HasPrefix(constraintStr, ">=") {
+			wantVer := strings.TrimPrefix(
+				strings.TrimPrefix(
+					constraintStr, "<=",
+				), ">=",
+			)
+			uv, err = semver.NewVersion(wantVer)
+			if err != nil {
+				return err
+			}
+		} else if strings.HasPrefix(constraintStr, "<") {
+			wantVer := strings.TrimPrefix(constraintStr, "<")
+			ov, err := semver.NewVersion(wantVer)
+			if err != nil {
+				return err
+			}
+			uv = semver.New(ov.Major(), ov.Minor()-1, ov.Patch(), "", "")
+		} else if strings.HasPrefix(constraintStr, ">") {
+			wantVer := strings.TrimPrefix(constraintStr, ">")
+			ov, err := semver.NewVersion(wantVer)
+			if err != nil {
+				return err
+			}
+			uv = semver.New(ov.Major(), ov.Minor()+1, ov.Patch(), "", "")
+		}
+		newKV, _ := helmchartutil.ParseKubeVersion(uv.String())
+		debug.Printf(
+			ctx,
+			"version check failed for default Helm SDK kubeVersion %q. "+
+				"setting installer.KubeVersion manually to %q.\n",
+			dv.String(), newKV.String(),
+		)
+		installer.KubeVersion = newKV
+	}
 	return nil
 }
