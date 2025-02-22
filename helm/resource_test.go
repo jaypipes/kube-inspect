@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	kihelm "github.com/jaypipes/kube-inspect/helm"
+	"github.com/jaypipes/kube-inspect/kube"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,4 +37,32 @@ func TestOptionalResources(t *testing.T) {
 	// property is missing (but the "pdb.create" property is present in the
 	// schema)
 	assert.Contains(toggles, "pdb.create")
+}
+
+func TestFilterResourcesByName(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	ctx := context.TODO()
+	c, err := kihelm.Inspect(
+		ctx, nginxLocalChartDir,
+	)
+	require.Nil(err)
+
+	namedResources, err := c.Resources(ctx, kube.WithName("kube-inspect-nginx"))
+	require.Nil(err)
+	assert.Len(namedResources, 2)
+}
+
+func TestFilterResourcesByKind(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	ctx := context.TODO()
+	c, err := kihelm.Inspect(
+		ctx, nginxLocalChartDir,
+	)
+	require.Nil(err)
+
+	kindResources, err := c.Resources(ctx, kube.WithKind("ConfigMap"))
+	require.Nil(err)
+	assert.Len(kindResources, 1)
 }

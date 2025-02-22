@@ -9,18 +9,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jaypipes/kube-inspect/debug"
-	"github.com/jaypipes/kube-inspect/kube"
 	"github.com/samber/lo"
 	"github.com/santhosh-tekuri/jsonschema"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/jaypipes/kube-inspect/debug"
+	"github.com/jaypipes/kube-inspect/kube"
 )
 
 // Resources returns a slice of Kubernetes resources installed by the Helm
 // Chart that match a supplied filter.
+//
+// Implements `kube.Resourcer` interface
 func (c *Chart) Resources(
 	ctx context.Context,
+	filters ...kube.ResourceFilter,
 ) ([]*unstructured.Unstructured, error) {
 	if !c.rendered {
 		if err := c.render(ctx); err != nil {
@@ -35,6 +39,9 @@ func (c *Chart) Resources(
 	resources, err := kube.ResourcesFromManifest(ctx, c.manifest)
 	if err != nil {
 		return nil, err
+	}
+	for _, f := range filters {
+		resources = lo.Filter(resources, f)
 	}
 	c.resources = resources
 	return c.resources, nil
