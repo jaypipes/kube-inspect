@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"helm.sh/helm/v3/pkg/action"
-	helmchart "helm.sh/helm/v3/pkg/chart"
-	helmchartutil "helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/action"
+	helmchart "helm.sh/helm/v4/pkg/chart/v2"
+	helmchartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/jaypipes/kube-inspect/debug"

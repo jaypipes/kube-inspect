@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	helmchart "helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/strvals"
+	helmchart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/strvals"
 
 	"github.com/jaypipes/kube-inspect/debug"
 )
