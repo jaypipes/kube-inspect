@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	kihelm "github.com/jaypipes/kube-inspect/helm"
+	"github.com/jaypipes/kube-inspect/internal/testutil"
 	"github.com/jaypipes/kube-inspect/kube"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +20,7 @@ func TestOptionalResources(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 	c, err := kihelm.Inspect(
-		ctx, nginxLocalChartDir,
+		ctx, testutil.NginxLocalChartDir,
 	)
 	require.Nil(err)
 
@@ -44,7 +45,7 @@ func TestFilterResourcesByName(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 	c, err := kihelm.Inspect(
-		ctx, nginxLocalChartDir,
+		ctx, testutil.NginxLocalChartDir,
 	)
 	require.Nil(err)
 
@@ -58,7 +59,7 @@ func TestFilterResourcesByKind(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 	c, err := kihelm.Inspect(
-		ctx, nginxLocalChartDir,
+		ctx, testutil.NginxLocalChartDir,
 	)
 	require.Nil(err)
 

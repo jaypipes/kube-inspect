@@ -7,40 +7,23 @@ package helm_test
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	kictx "github.com/jaypipes/kube-inspect/context"
 	kihelm "github.com/jaypipes/kube-inspect/helm"
+	"github.com/jaypipes/kube-inspect/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
-
-const (
-	skipNetworkFetchEnvKey = "SKIP_NETWORK_FETCH"
-	nginxChartURL          = "https://charts.bitnami.com/bitnami/nginx-8.8.4.tgz"
-)
-
-var (
-	certManagerLocalChartPath = filepath.Join("testdata", "cert-manager-v1.17.1.tgz")
-	nginxLocalChartPath       = filepath.Join("testdata", "nginx-8.8.4.tgz")
-	nginxLocalChartDir        = filepath.Join("testdata", "nginx")
-)
-
-func skipNetworkFetch(t *testing.T) {
-	if _, ok := os.LookupEnv(skipNetworkFetchEnvKey); ok {
-		t.Skip("network fetching disabled.")
-	}
-}
 
 func TestInspectURL(t *testing.T) {
-	skipNetworkFetch(t)
+	testutil.SkipNetworkFetch(t)
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx := kictx.New(kictx.WithDebug())
-	c, err := kihelm.Inspect(ctx, nginxChartURL)
+	c, err := kihelm.Inspect(ctx, testutil.NginxChartURL)
 	require.Nil(err)
 
 	require.NotNil(c.Metadata)
@@ -60,7 +43,7 @@ func TestInspectURL(t *testing.T) {
 func TestInspectHelmSDKChart(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	tf, err := os.Open(nginxLocalChartPath)
+	tf, err := os.Open(testutil.NginxLocalChartPath)
 	require.Nil(err)
 	hc, err := loader.LoadArchive(tf)
 	require.Nil(err)
@@ -86,7 +69,7 @@ func TestInspectChartDir(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx := context.TODO()
-	c, err := kihelm.Inspect(ctx, nginxLocalChartDir)
+	c, err := kihelm.Inspect(ctx, testutil.NginxLocalChartDir)
 	require.Nil(err)
 
 	require.NotNil(c.Metadata)
@@ -106,7 +89,7 @@ func TestInspectChartDir(t *testing.T) {
 func TestInspectIOReader(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	tf, err := os.Open(nginxLocalChartPath)
+	tf, err := os.Open(testutil.NginxLocalChartPath)
 	require.Nil(err)
 	ctx := context.TODO()
 	c, err := kihelm.Inspect(ctx, tf)
@@ -132,7 +115,7 @@ func TestInspectWithValues(t *testing.T) {
 	overrides := "pdb.create=true,serviceAccount.create=true"
 	ctx := context.TODO()
 	c, err := kihelm.Inspect(
-		ctx, nginxLocalChartDir,
+		ctx, testutil.NginxLocalChartDir,
 		kihelm.WithValues(overrides),
 	)
 	require.Nil(err)
@@ -164,7 +147,7 @@ func TestInspectChartAutoAdjustedKubeVersion(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	debugCollector := &strings.Builder{}
-	tf, err := os.Open(certManagerLocalChartPath)
+	tf, err := os.Open(testutil.CertManagerLocalChartPath)
 	require.Nil(err)
 	hc, err := loader.LoadArchive(tf)
 	require.Nil(err)
