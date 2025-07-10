@@ -19,8 +19,10 @@ import (
 )
 
 const (
-	skipNetworkFetchEnvKey = "SKIP_NETWORK_FETCH"
-	nginxChartURL          = "https://charts.bitnami.com/bitnami/nginx-8.8.4.tgz"
+	skipNetworkFetchEnvKey      = "SKIP_NETWORK_FETCH"
+	nginxChartURL               = "https://charts.bitnami.com/bitnami/nginx-8.8.4.tgz"
+	nginxIngressOCIURL          = "oci://ghcr.io/nginx/charts/nginx-ingress"
+	nginxIngressOCIChartVersion = "2.0.1"
 )
 
 var (
@@ -33,6 +35,38 @@ func skipNetworkFetch(t *testing.T) {
 	if _, ok := os.LookupEnv(skipNetworkFetchEnvKey); ok {
 		t.Skip("network fetching disabled.")
 	}
+}
+
+func TestInspectOCI_MissingVersion(t *testing.T) {
+	assert := assert.New(t)
+	_, err := kihelm.Inspect(context.TODO(), nginxIngressOCIURL)
+	assert.ErrorContains(err, "missing required chart version argument.")
+}
+
+func TestInspectOCI(t *testing.T) {
+	skipNetworkFetch(t)
+	require := require.New(t)
+	assert := assert.New(t)
+	ctx := kictx.New(kictx.WithDebug())
+	c, err := kihelm.Inspect(
+		ctx, nginxIngressOCIURL,
+		kihelm.WithChartVersion(nginxIngressOCIChartVersion),
+	)
+	require.Nil(err)
+
+	require.NotNil(c.Metadata)
+	assert.Equal("nginx-ingress", c.Metadata.Name)
+	resources, err := c.Resources(ctx)
+	require.Nil(err)
+	resourceKinds := []string{}
+	for _, r := range resources {
+		resourceKinds = append(resourceKinds, r.GetKind())
+	}
+	assert.Len(resources, 23)
+	assert.Contains(resourceKinds, "CustomResourceDefinition")
+	assert.Contains(resourceKinds, "Service")
+	assert.Contains(resourceKinds, "Deployment")
+	assert.Contains(resourceKinds, "ConfigMap")
 }
 
 func TestInspectURL(t *testing.T) {
