@@ -26,9 +26,10 @@ const (
 )
 
 var (
-	certManagerLocalChartPath = filepath.Join("testdata", "cert-manager-v1.17.1.tgz")
-	nginxLocalChartPath       = filepath.Join("testdata", "nginx-8.8.4.tgz")
-	nginxLocalChartDir        = filepath.Join("testdata", "nginx")
+	certManager1_17_1_LocalChartPath = filepath.Join("testdata", "cert-manager-v1.17.1.tgz")
+	certManager1_18_0_LocalChartPath = filepath.Join("testdata", "cert-manager-v1.18.0.tgz")
+	nginxLocalChartPath              = filepath.Join("testdata", "nginx-8.8.4.tgz")
+	nginxLocalChartDir               = filepath.Join("testdata", "nginx")
 )
 
 func skipNetworkFetch(t *testing.T) {
@@ -198,7 +199,7 @@ func TestInspectChartAutoAdjustedKubeVersion(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	debugCollector := &strings.Builder{}
-	tf, err := os.Open(certManagerLocalChartPath)
+	tf, err := os.Open(certManager1_17_1_LocalChartPath)
 	require.Nil(err)
 	hc, err := loader.LoadArchive(tf)
 	require.Nil(err)
