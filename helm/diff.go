@@ -1,3 +1,7 @@
+// Use and distribution licensed under the Apache license version 2.
+//
+// See the COPYING file in the root project directory for full text.
+
 package helm
 
 import (
@@ -5,22 +9,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gonvenience/ytbx"
-	"github.com/homeport/dyff/pkg/dyff"
+	"github.com/jaypipes/kube-inspect/diff"
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-type diffOptions struct{}
-
-type DiffOption func(*diffOptions)
-
 type ResourcesDiff struct {
 	// Changed is a map, keyed by full resource name
 	// (APIGroupVersion/ResourceName) of resources different between Charts A
 	// and B.
-	Changed map[string]dyff.Report
+	Changed map[string]diff.Diff
 	// Added contains resources present in Chart B that are not present in
 	// Chart A.
 	Added []*unstructured.Unstructured
@@ -37,7 +36,7 @@ type ChartDiff struct {
 	Resources ResourcesDiff `yaml:"resources"`
 	// Values describes the values.yaml fields that are different between the
 	// Charts.
-	Values dyff.Report `yaml:"values"`
+	Values diff.Diff `yaml:"values"`
 }
 
 // Diff returns a struct that represents the difference between this Chart and
@@ -45,9 +44,9 @@ type ChartDiff struct {
 func (c *Chart) Diff(
 	ctx context.Context,
 	other *Chart,
-	opt ...DiffOption,
+	opt ...diff.DiffOption,
 ) (*ChartDiff, error) {
-	opts := &diffOptions{}
+	opts := &diff.DiffOptions{}
 	for _, o := range opt {
 		o(opts)
 	}
@@ -67,34 +66,10 @@ func (c *Chart) Diff(
 	}, nil
 }
 
-// dyffReport returns a dyff.Report that compares two supplied YAML documents.
-func dyffReport(a, b []byte) (*dyff.Report, error) {
-	af, err := ytbx.LoadYAMLDocuments(a)
-	if err != nil {
-		return nil, err
-	}
-	bf, err := ytbx.LoadYAMLDocuments(b)
-	if err != nil {
-		return nil, err
-	}
-	res, err := dyff.CompareInputFiles(
-		ytbx.InputFile{Documents: af},
-		ytbx.InputFile{Documents: bf},
-		dyff.IgnoreOrderChanges(false),
-		dyff.IgnoreWhitespaceChanges(false),
-		dyff.KubernetesEntityDetection(true),
-		dyff.DetectRenames(true),
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &res, nil
-}
-
 func valuesDiff(
 	a *Chart,
 	b *Chart,
-) (*dyff.Report, error) {
+) (*diff.Diff, error) {
 	aVals, err := yaml.Marshal(a.Values)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chart A values: %w", err)
@@ -103,7 +78,7 @@ func valuesDiff(
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chart B values: %w", err)
 	}
-	return dyffReport(aVals, bVals)
+	return diff.New(aVals, bVals)
 }
 
 func resourcesDiff(
@@ -120,7 +95,7 @@ func resourcesDiff(
 		return nil, fmt.Errorf("failed to get resources from chart B: %w", err)
 	}
 	var additions, removals, unchanged []*unstructured.Unstructured
-	changes := map[string]dyff.Report{}
+	changes := map[string]diff.Diff{}
 
 	for aKind, aNameResources := range aResGroups {
 		if _, ok := bResGroups[aKind]; !ok {
@@ -134,16 +109,7 @@ func resourcesDiff(
 				removals = append(removals, aRes)
 				continue
 			}
-
-			adoc, err := yaml.Marshal(aRes)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal resource A: %w", err)
-			}
-			bdoc, err := yaml.Marshal(bRes)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal resource B: %w", err)
-			}
-			report, err := dyffReport(adoc, bdoc)
+			report, err := diff.New(aRes, bRes)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get dyff report: %w", err)
 			}

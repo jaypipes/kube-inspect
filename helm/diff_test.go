@@ -5,15 +5,12 @@
 package helm_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"slices"
-	"strings"
 	"testing"
 
-	"github.com/homeport/dyff/pkg/dyff"
 	kihelm "github.com/jaypipes/kube-inspect/helm"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
@@ -94,27 +91,6 @@ func TestChartDiff(t *testing.T) {
 	assert.Equal(expectChanged, changed)
 
 	assert.NotNil(diff.Values)
-
-	reportWriter := &dyff.DiffSyntaxReport{
-		PathPrefix:            "@@",
-		RootDescriptionPrefix: "#",
-		ChangeTypePrefix:      "!",
-		HumanReport: dyff.HumanReport{
-			Report:                diff.Values,
-			Indent:                0,
-			DoNotInspectCerts:     false,
-			NoTableStyle:          true,
-			OmitHeader:            true,
-			UseGoPatchPaths:       false,
-			MinorChangeThreshold:  0.1,
-			MultilineContextLines: 2,
-			PrefixMultiline:       true,
-		},
-	}
-
-	var b bytes.Buffer
-
-	err = reportWriter.WriteReport(&b)
 	require.Nil(err)
 	expectValsDiff := `@@ global.rbac @@
 ! + one map entry added:
@@ -124,5 +100,5 @@ func TestChartDiff(t *testing.T) {
 ! ± type change from int to string
 - 9402
 + http-metrics`
-	assert.Equal(expectValsDiff, strings.TrimSpace(b.String()))
+	assert.Equal(expectValsDiff, diff.Values.String())
 }
