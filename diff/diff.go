@@ -27,6 +27,23 @@ type Diff struct {
 	dyff.Report
 }
 
+// ResourcesDiff describes the differences between two collections of
+// Kubernetes Resources.
+type ResourcesDiff struct {
+	// Changed is a map, keyed by full resource name
+	// (APIGroupVersion/ResourceName) of resources different between Charts A
+	// and B.
+	Changed map[string]Diff
+	// Added contains resources present in Chart B that are not present in
+	// Chart A.
+	Added []*unstructured.Unstructured
+	// Removed contains resources present in Chart A that are not present in
+	// Chart B.
+	Removed []*unstructured.Unstructured
+	// Unchanged contains resources that are exactly the same in both Charts.
+	Unchanged []*unstructured.Unstructured
+}
+
 // String returns a formatted string containing the diff of the compared
 // documents.
 func (d *Diff) String() string {
