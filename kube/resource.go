@@ -7,7 +7,9 @@ package kube
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"regexp"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,6 +17,8 @@ import (
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/jaypipes/kube-inspect/debug"
+	"github.com/jaypipes/kube-inspect/diff"
+	"github.com/samber/lo"
 )
 
 var (
@@ -64,4 +68,92 @@ func ResourcesFromManifest(
 	}
 
 	return res, nil
+}
+
+type kindNameResourceMap map[string]map[string]*unstructured.Unstructured
+
+// DiffResources returns the `diff.ResourcesDiff` that describes the
+// differences between two supplied slices of resources.
+//
+// The two arguments should be []runtime.Object,
+// *unstructured.UnstructuredList, or []*unstructured.Unstructured
+func DiffResources(
+	a, b any,
+) (*diff.ResourcesDiff, error) {
+	aResources, err := ToSliceUnstructured(a)
+	if err != nil {
+		return nil, err
+	}
+	bResources, err := ToSliceUnstructured(b)
+	if err != nil {
+		return nil, err
+	}
+	aResGroups := resourcesByKindAndName(aResources)
+	bResGroups := resourcesByKindAndName(bResources)
+
+	var additions, removals, unchanged []*unstructured.Unstructured
+	changes := map[string]diff.Diff{}
+
+	for aKind, aNameResources := range aResGroups {
+		if _, ok := bResGroups[aKind]; !ok {
+			removals = append(removals, lo.Values(aNameResources)...)
+			continue
+		}
+
+		for aName, aRes := range aNameResources {
+			bRes, ok := bResGroups[aKind][aName]
+			if !ok {
+				removals = append(removals, aRes)
+				continue
+			}
+			report, err := diff.New(aRes, bRes)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get dyff report: %w", err)
+			}
+			if len(report.Diffs) > 0 {
+				changes[aName] = *report
+			} else {
+				unchanged = append(unchanged, aRes)
+			}
+		}
+	}
+
+	for bKind, bNameResources := range bResGroups {
+		if _, ok := aResGroups[bKind]; !ok {
+			removals = append(removals, lo.Values(bNameResources)...)
+			continue
+		}
+		for bName, bRes := range bNameResources {
+			if _, ok := aResGroups[bKind][bName]; !ok {
+				additions = append(additions, bRes)
+			}
+		}
+	}
+
+	return &diff.ResourcesDiff{
+		Changed:   changes,
+		Added:     additions,
+		Removed:   removals,
+		Unchanged: unchanged,
+	}, nil
+}
+
+// resourcesByKindAndName returns a map, keyed by Resource Kind, of maps,
+// keyed by Resource Name, of Kubernetes Resources. The resource name will be
+// stripped of the "kube-inspect-" prefix that we tack on while templating the
+// Helm release.
+func resourcesByKindAndName(
+	rs []*unstructured.Unstructured,
+) kindNameResourceMap {
+	res := kindNameResourceMap{}
+	for _, r := range rs {
+		if _, ok := res[r.GetKind()]; !ok {
+			res[r.GetKind()] = map[string]*unstructured.Unstructured{}
+		}
+		if strings.HasPrefix(r.GetName(), "kube-inspect-") {
+			r.SetName(strings.TrimPrefix(r.GetName(), "kube-inspect-"))
+		}
+		res[r.GetKind()][r.GetName()] = r
+	}
+	return res
 }
