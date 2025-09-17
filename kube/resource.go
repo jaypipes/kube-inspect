@@ -8,21 +8,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/jaypipes/kube-inspect/debug"
 	"github.com/jaypipes/kube-inspect/diff"
 	"github.com/samber/lo"
-)
-
-var (
-	regexDocument = regexp.MustCompile("(?m)^---")
 )
 
 // ResourcesFromManifest processes the supplied buffer containing a YAML
@@ -88,8 +84,8 @@ func DiffResources(
 	if err != nil {
 		return nil, err
 	}
-	aResGroups := resourcesByKindAndName(aResources)
-	bResGroups := resourcesByKindAndName(bResources)
+	aResGroups := resourcesByGroupVersionKindAndName(aResources)
+	bResGroups := resourcesByGroupVersionKindAndName(bResources)
 
 	var additions, removals, unchanged []*unstructured.Unstructured
 	changes := map[string]diff.Diff{}
@@ -111,7 +107,7 @@ func DiffResources(
 				return nil, fmt.Errorf("failed to get dyff report: %w", err)
 			}
 			if len(report.Diffs) > 0 {
-				changes[aName] = *report
+				changes[fmt.Sprintf("%s/%s", aKind, aName)] = *report
 			} else {
 				unchanged = append(unchanged, aRes)
 			}
@@ -138,22 +134,33 @@ func DiffResources(
 	}, nil
 }
 
-// resourcesByKindAndName returns a map, keyed by Resource Kind, of maps,
-// keyed by Resource Name, of Kubernetes Resources. The resource name will be
-// stripped of the "kube-inspect-" prefix that we tack on while templating the
-// Helm release.
-func resourcesByKindAndName(
+// resourcesByGroupVersionKindAndName returns a map, keyed by Resource Kind prefixed
+// with group version, of maps, keyed by Resource Name, of Kubernetes Resources. The
+// resource name will be stripped of the "kube-inspect-" prefix that we tack on while
+// templating the Helm release.
+func resourcesByGroupVersionKindAndName(
 	rs []*unstructured.Unstructured,
 ) kindNameResourceMap {
 	res := kindNameResourceMap{}
 	for _, r := range rs {
-		if _, ok := res[r.GetKind()]; !ok {
-			res[r.GetKind()] = map[string]*unstructured.Unstructured{}
+		groupVersionKind := groupVersionKindString(r.GroupVersionKind())
+		if _, ok := res[groupVersionKind]; !ok {
+			res[groupVersionKind] = map[string]*unstructured.Unstructured{}
 		}
-		if strings.HasPrefix(r.GetName(), "kube-inspect-") {
-			r.SetName(strings.TrimPrefix(r.GetName(), "kube-inspect-"))
+		if after, ok := strings.CutPrefix(r.GetName(), "kube-inspect-"); ok {
+			r.SetName(after)
 		}
-		res[r.GetKind()][r.GetName()] = r
+		res[groupVersionKind][r.GetName()] = r
 	}
 	return res
+}
+
+// groupVersionKindString converts a GroupVersionKind into a string representation
+// where each component is seperated by a /
+func groupVersionKindString(gvk schema.GroupVersionKind) string {
+	if gvk.Group == "" {
+		return fmt.Sprintf("%s/%s", gvk.Version, gvk.Kind)
+	} else {
+		return fmt.Sprintf("%s/%s/%s", gvk.Group, gvk.Version, gvk.Kind)
+	}
 }
