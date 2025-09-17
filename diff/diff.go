@@ -45,6 +45,13 @@ type ResourcesDiff struct {
 	Unchanged []*unstructured.Unstructured
 }
 
+// ExcludeRegexp accepts regular expressions as input and returns a new report with differences for not matching those patterns
+func (d *Diff) ExcludeRegexp(regexps ...string) *Diff {
+	return &Diff{
+		d.Report.ExcludeRegexp(regexps...),
+	}
+}
+
 // String returns a formatted string containing the diff of the compared
 // documents.
 func (d *Diff) String() string {
