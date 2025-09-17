@@ -6,6 +6,7 @@ toolchain go1.23.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
+	github.com/gonvenience/bunt v1.4.2
 	github.com/gonvenience/ytbx v1.4.7
 	github.com/homeport/dyff v1.10.2
 	github.com/samber/lo v1.49.1
@@ -59,7 +60,6 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/gonvenience/bunt v1.4.2 // indirect
 	github.com/gonvenience/idem v0.0.2 // indirect
 	github.com/gonvenience/neat v1.3.16 // indirect
 	github.com/gonvenience/term v1.0.4 // indirect

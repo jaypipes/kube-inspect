@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gonvenience/bunt"
 	"github.com/gonvenience/ytbx"
 	"github.com/homeport/dyff/pkg/dyff"
 	"gopkg.in/yaml.v3"
@@ -47,6 +48,7 @@ type ResourcesDiff struct {
 // String returns a formatted string containing the diff of the compared
 // documents.
 func (d *Diff) String() string {
+	bunt.SetColorSettings(bunt.OFF, bunt.OFF)
 	reportWriter := &dyff.DiffSyntaxReport{
 		PathPrefix:            "@@",
 		RootDescriptionPrefix: "#",
