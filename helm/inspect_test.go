@@ -215,6 +215,6 @@ func TestInspectChartAutoAdjustedKubeVersion(t *testing.T) {
 	debugContent := debugCollector.String()
 	expected := `version check failed for default Helm SDK ` +
 		`kubeVersion "1.20.0". setting installer.KubeVersion ` +
-		`manually to "v1.22.0-0"`
+		`manually to "v1.22.0"`
 	assert.Contains(debugContent, expected)
 }
