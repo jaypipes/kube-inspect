@@ -66,8 +66,14 @@ func unstructuredFromBytes(subject []byte) (*unstructured.Unstructured, error) {
 }
 
 // ToSliceUnstructured returns a `[]*unstructured.Unstructured` given a subject
-// that is a `[]runtime.Object`, `*unstructured.UnstructuredList`, or
-// `[]*unstructured.Unstructured`
+// that is one of the following types
+//   - `[]runtime.Object`,
+//   - `*unstructured.UnstructuredList`,
+//   - `[]*unstructured.Unstructured` or
+//   - `map[string]map[string]*unstructured.Unstructured`
+//
+// The last of these is a case where the subject is a map of kind to a map of
+// name to resource.
 func ToSliceUnstructured(
 	subject any,
 ) ([]*unstructured.Unstructured, error) {
@@ -85,6 +91,14 @@ func ToSliceUnstructured(
 		res := make([]*unstructured.Unstructured, len(subject.Items))
 		for x, item := range subject.Items {
 			res[x] = &item
+		}
+		return res, nil
+	case map[string]map[string]*unstructured.Unstructured:
+		res := make([]*unstructured.Unstructured, 0)
+		for _, names := range subject {
+			for _, resource := range names {
+				res = append(res, resource)
+			}
 		}
 		return res, nil
 	default:
