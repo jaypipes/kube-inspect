@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 // ChartLocation describes where a HelmChart can be found.
@@ -104,6 +107,28 @@ func (o *ChartLocation) HelmRepositoryURL() string {
 		return ""
 	}
 	return strings.TrimSuffix(o.Repository, "/")
+}
+
+// HelmRepository returns a `helm.sh/helm/v3/pkg/repo.Repo` object referring to
+// the ChartLocation, or nil if the ChartLocation does not refer to a Helm
+// Repository.
+//
+// This is a helper method to avoid going through all the helm.sh/helm/v3 SDK
+// rigamorole around cli, settings, and getters.
+func (o *ChartLocation) HelmRepository() (*repo.ChartRepository, error) {
+	if !o.IsHelmRepository() {
+		return nil, fmt.Errorf(
+			"ChartLocation does not refer to a Helm Repository.",
+		)
+	}
+
+	entry := &repo.Entry{
+		Name: o.Name,
+		URL:  o.HelmRepositoryURL(),
+	}
+
+	settings := cli.New()
+	return repo.NewChartRepository(entry, getter.All(settings))
 }
 
 // ChartLocationFromURL returns a ChartLocation given a supplied URL. If the
