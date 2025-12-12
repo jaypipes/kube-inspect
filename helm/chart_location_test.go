@@ -35,17 +35,17 @@ func TestChartLocation(t *testing.T) {
 		},
 		{
 			"OCI URL",
-			"oci://charts.jetstack.io/cert-manager",
+			"oci://quay.io/jetstack/charts/cert-manager",
 			nil,
 			false,
 			true,
 			false,
 			&helm.ChartLocation{
-				URL: "oci://charts.jetstack.io/cert-manager",
+				URL: "oci://quay.io/jetstack/charts/cert-manager",
 			},
 		},
 		{
-			"Helm Registyr URL",
+			"Helm Registry URL",
 			"https://charts.jetstack.io/cert-manager",
 			nil,
 			false,
@@ -87,8 +87,59 @@ func TestChartLocation(t *testing.T) {
 				assert.Equal(tc.isHelmRepository, got.IsHelmRepository())
 				assert.Equal(tc.exp, got)
 			}
-
 		})
+	}
+}
 
+func TestChartLocationOCI(t *testing.T) {
+	tcs := []struct {
+		name          string
+		url           string
+		expRegistry   string
+		expNamespace  string
+		expRepository string
+	}{
+		{
+			"single-part namespace",
+			"oci://quay.io/bitnami-charts/cert-manager",
+			"quay.io",
+			"bitnami-charts",
+			"quay.io/bitnami-charts/cert-manager",
+		},
+		{
+			"dual-part namespace",
+			"oci://quay.io/jetstack/charts/cert-manager",
+			"quay.io",
+			"jetstack/charts",
+			"quay.io/jetstack/charts/cert-manager",
+		},
+		{
+			"triple-part namespace",
+			"oci://quay.io/jetstack/charts/gold/cert-manager",
+			"quay.io",
+			"jetstack/charts/gold",
+			"quay.io/jetstack/charts/gold/cert-manager",
+		},
+		{
+			"Not OCI",
+			"file://path/to/chart.tar.gz",
+			"",
+			"",
+			"",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(tt *testing.T) {
+			assert := assert.New(tt)
+			loc, err := helm.ChartLocationFromURL(tc.url)
+			assert.Nil(err)
+			reg := loc.OCIRegistry()
+			assert.Equal(tc.expRegistry, reg)
+			reg, ns := loc.OCIRegistryAndNamespace()
+			assert.Equal(tc.expRegistry, reg)
+			assert.Equal(tc.expNamespace, ns)
+			repo := loc.OCIRepository()
+			assert.Equal(tc.expRepository, repo)
+		})
 	}
 }
