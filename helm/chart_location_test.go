@@ -121,7 +121,7 @@ func TestChartLocationOCI(t *testing.T) {
 			"quay.io/jetstack/charts/gold/cert-manager",
 		},
 		{
-			"Not OCI",
+			"not OCI",
 			"file://path/to/chart.tar.gz",
 			"",
 			"",
@@ -140,6 +140,47 @@ func TestChartLocationOCI(t *testing.T) {
 			assert.Equal(tc.expNamespace, ns)
 			repo := loc.OCIRepository()
 			assert.Equal(tc.expRepository, repo)
+		})
+	}
+}
+
+func TestChartLocationHelmRepository(t *testing.T) {
+	tcs := []struct {
+		name             string
+		url              string
+		expRepositoryURL string
+		expName          string
+		expErr           error
+	}{
+		{
+			"simple helm repository",
+			"https://helm.sh/charts/cert-manager",
+			"https://helm.sh/charts",
+			"cert-manager",
+			nil,
+		},
+		{
+			"not Helm Repository",
+			"oci://quay.io/jetstack/charts/gold/cert-manager",
+			"",
+			"",
+			fmt.Errorf("ChartLocation does not refer to a Helm Repository."),
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(tt *testing.T) {
+			assert := assert.New(tt)
+			loc, err := helm.ChartLocationFromURL(tc.url)
+			assert.Nil(err)
+			repoURL := loc.HelmRepositoryURL()
+			assert.Equal(tc.expRepositoryURL, repoURL)
+			repo, err := loc.HelmRepository()
+			assert.Equal(tc.expName, loc.Name)
+			if tc.expErr != nil {
+				assert.Error(tc.expErr, err)
+			} else {
+				assert.NotNil(repo)
+			}
 		})
 	}
 }
