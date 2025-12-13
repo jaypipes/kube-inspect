@@ -8,6 +8,9 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 )
 
 // ChartLocation describes where a HelmChart can be found.
@@ -77,19 +80,51 @@ func (o *ChartLocation) OCIRegistryAndNamespace() (string, string) {
 	return parts[0], strings.Join(parts[1:len(parts)-1], "/")
 }
 
-// OCIRepository returns the ChartLocation's URL stripped of the `oci://`
+// OCIRepositoryPath returns the ChartLocation's URL stripped of the `oci://`
 // prefix.  This string is meant to be passed as-is to the
 // `oras.land/oras-go/v2/registry/remote.NewRepository` function.
 //
 // Returns an empty string if the ChartLocation does not refer to an OCI
 // Artifact or is malformed.
-func (o *ChartLocation) OCIRepository() string {
+func (o *ChartLocation) OCIRepositoryPath() string {
 	if !o.IsOCI() {
 		return ""
 	}
 	url := strings.TrimPrefix(o.URL, "oci://")
 	url = strings.TrimSuffix(url, "/")
 	return url
+}
+
+// OCIRepository returns a `oras.land/oras-go/v2/registry/remote.Repository`
+// object referring to the ChartLocation, or nil if the ChartLocation does not
+// refer to an OCI Repository.
+//
+// The `oras.land/oras-go/v2/registry/remote.Repository` is constructed from
+// the Docker credential store.
+//
+// This is a helper method to avoid going through all the ORAS client
+// connection setup rigamorole.
+func (o *ChartLocation) OCIRepository() (*remote.Repository, error) {
+	if !o.IsOCI() {
+		return nil, fmt.Errorf(
+			"ChartLocation does not refer to an OCI Repository.",
+		)
+	}
+	ociRepo, err := remote.NewRepository(o.OCIRepositoryPath())
+	if err != nil {
+		return nil, err
+	}
+
+	client := &auth.Client{Cache: auth.NewCache()}
+
+	credStore, err := credentials.NewStoreFromDocker(credentials.StoreOptions{})
+	if err != nil {
+		return nil, err
+	} else {
+		client.Credential = credentials.Credential(credStore)
+		ociRepo.Client = client
+	}
+	return ociRepo, nil
 }
 
 // IsHelmRepository returns true if the ChartLocation refers to a Helm Chart
