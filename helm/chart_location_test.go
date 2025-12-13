@@ -93,11 +93,11 @@ func TestChartLocation(t *testing.T) {
 
 func TestChartLocationOCI(t *testing.T) {
 	tcs := []struct {
-		name          string
-		url           string
-		expRegistry   string
-		expNamespace  string
-		expRepository string
+		name              string
+		url               string
+		expRegistry       string
+		expNamespace      string
+		expRepositoryPath string
 	}{
 		{
 			"single-part namespace",
@@ -138,8 +138,8 @@ func TestChartLocationOCI(t *testing.T) {
 			reg, ns := loc.OCIRegistryAndNamespace()
 			assert.Equal(tc.expRegistry, reg)
 			assert.Equal(tc.expNamespace, ns)
-			repo := loc.OCIRepository()
-			assert.Equal(tc.expRepository, repo)
+			repo := loc.OCIRepositoryPath()
+			assert.Equal(tc.expRepositoryPath, repo)
 		})
 	}
 }
