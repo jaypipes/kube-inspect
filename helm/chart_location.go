@@ -28,6 +28,17 @@ type ChartLocation struct {
 	Name string `json:"name,omitempty"`
 }
 
+// String returns a simplified string representation of the ChartLocation.
+func (o *ChartLocation) String() string {
+	if o.IsLocal() {
+		return fmt.Sprintf("(file) %q", strings.TrimPrefix(o.URL, "file://"))
+	}
+	if o.IsOCI() {
+		return fmt.Sprintf("(oci) %q", o.OCIRepositoryPath())
+	}
+	return fmt.Sprintf("(helm) repo: %q chart: %q", o.Repository, o.Name)
+}
+
 // IsLocal returns true if the ChartLocation refers to a local filesystem path,
 // false otherwise.
 func (o *ChartLocation) IsLocal() bool {
